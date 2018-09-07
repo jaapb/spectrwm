@@ -75,7 +75,6 @@
 #include <xcb/xcb_event.h>
 #include <xcb/xcb_icccm.h>
 #include <xcb/xcb_keysyms.h>
-#include <xcb/xinput.h>
 #include <xcb/xtest.h>
 #include <xcb/randr.h>
 
@@ -84,6 +83,10 @@
 #ifdef __OSX__
 #include <osx.h>
 #endif
+#if defined(__linux__)
+#include <xcb/xinput.h>
+#endif
+
 
 #ifdef SPECTRWM_BUILDSTR
 static const char	*buildstr = SPECTRWM_BUILDSTR;
@@ -3674,8 +3677,9 @@ center_pointer(struct swm_region *r)
 	struct ws_win			*win;
 	xcb_window_t			dwinid;
 	int				dx, dy;
+#if defined(__linux__)
 	xcb_input_xi_get_client_pointer_reply_t		*gcpr;
-
+#endif
 	if (!warp_pointer || r == NULL)
 		return;
 
@@ -3694,12 +3698,14 @@ center_pointer(struct swm_region *r)
 	}
 
 	if (xinput2_support) {
+#if defined(__linux__)
 		gcpr = xcb_input_xi_get_client_pointer_reply(conn,
 		    xcb_input_xi_get_client_pointer(conn, XCB_NONE), NULL);
 		if (gcpr)
 			/* XIWarpPointer takes FP1616. */
 			xcb_input_xi_warp_pointer(conn, XCB_NONE, dwinid, 0, 0,
 			    0, 0, dx << 16, dy << 16, gcpr->deviceid);
+#endif
 	} else {
 		xcb_warp_pointer(conn, XCB_NONE, dwinid, 0, 0, 0, 0, dx, dy);
 	}
@@ -12215,6 +12221,7 @@ setup_screens(void)
 void
 setup_extensions(void)
 {
+#if defined(__linux__)
 	const xcb_query_extension_reply_t	*qep;
 	xcb_randr_query_version_reply_t		*rqvr;
 	xcb_input_xi_query_version_reply_t	*xiqvr;
@@ -12244,7 +12251,7 @@ setup_extensions(void)
 			free(xiqvr);
 		}
 	}
-
+#endif
 }
 
 void
