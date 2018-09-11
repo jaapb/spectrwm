@@ -8589,9 +8589,9 @@ void
 grabkeys(void)
 {
 	struct binding		*bp;
-	int			num_screens, k, j;
+	int			num_screens, i, j, k;
 	uint16_t		modifiers[4];
-	xcb_keycode_t		*code;
+	xcb_keycode_t		*codes;
 
 	DNPRINTF(SWM_D_MISC, "begin\n");
 	updatenumlockmask();
@@ -8626,31 +8626,41 @@ grabkeys(void)
 			    bp->action <= FN_MVWS_22)
 				continue;
 
-			if ((code = xcb_key_symbols_get_keycode(syms,
+			if ((codes = xcb_key_symbols_get_keycode(syms,
 			    bp->value)) == NULL)
 				continue;
 
+			/* Find the keycode in the first set of symbols. */
+			for (i = 0; codes[i] != XCB_NO_SYMBOL; i++)
+				if (xcb_key_symbols_get_keysym(syms, codes[i],
+				    0) == bp->value)
+					break;
+
+			if (codes[i] == XCB_NO_SYMBOL) {
+				free(codes);
+				continue;
+			}
+
 			if (bp->mod == XCB_MOD_MASK_ANY) {
 				/* All modifiers are grabbed in one pass. */
-				DNPRINTF(SWM_D_MOUSE, "grab key: %u, "
-				    "modmask: %d\n", bp->value, bp->mod);
-				xcb_grab_key(conn, 1, screens[k].root,
-				    bp->mod, *code, XCB_GRAB_MODE_ASYNC,
+				DNPRINTF(SWM_D_KEY, "key: %u, modmask: %d\n",
+				    bp->value, bp->mod);
+				xcb_grab_key(conn, 1, screens[k].root, bp->mod,
+				    codes[i], XCB_GRAB_MODE_ASYNC,
 				    XCB_GRAB_MODE_SYNC);
 			} else {
 				/* Need to grab each modifier permutation. */
 				for (j = 0; j < LENGTH(modifiers); j++) {
-					DNPRINTF(SWM_D_MOUSE, "grab key: %u, "
-					    "modmask: %d\n",
-					    bp->value, bp->mod | modifiers[j]);
-					xcb_grab_key(conn, 1,
-					    screens[k].root,
-					    bp->mod | modifiers[j],
-					    *code, XCB_GRAB_MODE_ASYNC,
+					DNPRINTF(SWM_D_KEY, "key: %u, "
+					    "modmask: %d\n", bp->value,
+					    bp->mod | modifiers[j]);
+					xcb_grab_key(conn, 1, screens[k].root,
+					    bp->mod | modifiers[j], codes[i],
+					    XCB_GRAB_MODE_ASYNC,
 					    XCB_GRAB_MODE_SYNC);
 				}
 			}
-			free(code);
+			free(codes);
 		}
 	}
 	DNPRINTF(SWM_D_MISC, "done\n");
